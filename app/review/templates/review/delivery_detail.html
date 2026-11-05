@@ -1,0 +1,39 @@
+{% extends "review/base.html" %}
+{% block title %}Delivery {{ delivery.pk }} · Webhooked{% endblock %}
+{% block content %}
+<nav class="breadcrumbs"><a href="{% url 'review:dashboard' %}">All deliveries</a><span>/</span><a href="{% url 'review:endpoint-detail' delivery.endpoint.pk %}">{{ delivery.endpoint.name }}</a><span>/</span><span>Delivery {{ delivery.pk }}</span></nav>
+<div class="page-heading">
+  <div><div class="eyebrow">DELIVERY · {{ delivery.received_at|date:"M j, Y · H:i:s" }} UTC</div><h1>{{ delivery.method }} request</h1><p class="subtitle mono">{{ delivery.request_target }}</p></div>
+  <div class="heading-actions">
+    <a class="button button-muted" href="{% url 'review:delivery-export' delivery.pk %}">Download JSON</a>
+    <form method="post" action="{% url 'review:delivery-delete' delivery.pk %}">
+      {% csrf_token %}<button class="button button-danger" type="submit" data-confirm="Permanently delete this delivery?">Delete</button>
+    </form>
+  </div>
+</div>
+<section class="detail-card">
+  <h2>Request details</h2>
+  <dl class="detail-grid">
+    <dt>Endpoint</dt><dd><a href="{% url 'review:endpoint-detail' delivery.endpoint.pk %}">{{ delivery.endpoint.name }}</a></dd>
+    <dt>Method</dt><dd><span class="method method-{{ delivery.method|lower }}">{{ delivery.method }}</span></dd>
+    <dt>Source IP</dt><dd class="mono">{{ delivery.source_ip|default:"Unknown" }}</dd>
+    <dt>Received</dt><dd>{{ delivery.received_at|date:"Y-m-d H:i:s.u" }} UTC</dd>
+  </dl>
+</section>
+<section class="detail-card">
+  <h2>Headers <span class="muted small">({{ delivery.headers|length }})</span></h2>
+  {% if delivery.headers %}
+    <dl class="header-list">{% for header in delivery.headers %}<dt>{{ header.name }}</dt><dd>{{ header.value }}</dd>{% endfor %}</dl>
+  {% else %}<p class="muted">No headers recorded.</p>{% endif %}
+</section>
+<section class="detail-card">
+  <div class="section-title"><h2>Body</h2><span class="muted small">{{ delivery.body_bytes|length }} bytes</span></div>
+  {% if delivery.body_is_utf8 %}
+    {% if body_json != None %}<span class="pill pill-json">JSON</span>{% endif %}
+    <pre class="payload">{{ delivery.body_text }}</pre>
+  {% else %}
+    <span class="pill pill-binary">Binary · Base64</span>
+    <pre class="payload">{{ delivery.body_base64 }}</pre>
+  {% endif %}
+</section>
+{% endblock %}

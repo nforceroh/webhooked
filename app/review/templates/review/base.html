@@ -1,0 +1,46 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Webhooked{% endblock %}</title>
+  <script>
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "dark";
+  </script>
+  <link rel="stylesheet" href="{% static 'review/app.css' %}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="{% url 'review:dashboard' %}"><span class="brand-mark">w</span> webhooked</a>
+    <div class="top-actions">
+      <button type="button" class="theme-toggle" data-theme-toggle>Toggle theme</button>
+      <div class="top-meta"><span class="status-dot"></span> Capture is running</div>
+    </div>
+  </header>
+  <main class="shell">
+    <aside class="sidebar">
+      <a class="nav-link {% if not current_endpoint %}selected{% endif %}" href="{% url 'review:dashboard' %}">
+        <span>All deliveries</span><span class="nav-count">{{ total_deliveries }}</span>
+      </a>
+      <div class="sidebar-heading">CAPTURE ENDPOINTS</div>
+      {% for endpoint in endpoints %}
+        <a class="endpoint-link {% if endpoint == current_endpoint %}selected{% endif %}" href="{% url 'review:endpoint-detail' endpoint.pk %}">
+          <span class="endpoint-dot {% if not endpoint.is_active %}revoked{% endif %}"></span>
+          <span class="endpoint-name">{{ endpoint.name }}</span>
+          <span class="endpoint-count">{{ endpoint.delivery_count }}</span>
+        </a>
+      {% empty %}
+        <p class="empty-note">No endpoints yet.</p>
+      {% endfor %}
+      <div class="sidebar-foot">
+        <span class="status-dot"></span> Private homelab capture
+      </div>
+    </aside>
+    <section class="content">
+      {% block content %}{% endblock %}
+    </section>
+  </main>
+  <script src="{% static 'review/app.js' %}" defer></script>
+</body>
+</html>

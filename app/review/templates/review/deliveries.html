@@ -1,0 +1,126 @@
+{% extends "review/base.html" %}
+{% block title %}{% if current_endpoint %}{{ current_endpoint.name }}{% else %}All deliveries{% endif %} · Webhooked{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <div class="eyebrow">{% if current_endpoint %}CAPTURE ENDPOINT{% else %}INBOX{% endif %}</div>
+    <h1>{% if current_endpoint %}{{ current_endpoint.name }}{% else %}All deliveries{% endif %}</h1>
+    <p class="subtitle">{% if current_endpoint %}{{ current_endpoint.deliveries.count }} captured requests{% else %}Review requests captured across your endpoints{% endif %}</p>
+  </div>
+  {% if current_endpoint %}
+    <div class="heading-actions">
+      {% if current_endpoint.is_active %}
+        <form method="post" action="{% url 'review:endpoint-revoke' current_endpoint.pk %}">
+          {% csrf_token %}
+          <button class="button button-muted" type="submit" data-confirm="Revoke this endpoint? New requests will receive 404.">Revoke endpoint</button>
+        </form>
+      {% else %}
+        <span class="pill pill-revoked">Revoked</span>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+
+{% if current_endpoint %}
+  <div class="capture-card">
+    <div>
+      <span class="eyebrow">YOUR CAPTURE URL</span>
+      <code class="capture-url">{{ capture_url }}</code>
+      <p class="muted small">Treat this URL as a write capability. Anyone who has it can send requests.</p>
+    </div>
+    {% if current_endpoint.is_active %}
+      <button class="button button-primary copy-button" type="button" data-copy="{{ capture_url }}">Copy URL</button>
+    {% endif %}
+  </div>
+  {% if not current_endpoint.is_active %}
+    <details class="danger-zone">
+      <summary>Delete endpoint and {{ current_endpoint.deliveries.count }} deliveries</summary>
+      <form method="post" action="{% url 'review:endpoint-delete' current_endpoint.pk %}" class="inline-form">
+        {% csrf_token %}
+        <label for="confirm-name">Type <strong>{{ current_endpoint.name }}</strong> to permanently delete this endpoint and its history.</label>
+        <input id="confirm-name" name="confirm_name" autocomplete="off" required>
+        <button class="button button-danger" type="submit">Delete permanently</button>
+      </form>
+    </details>
+  {% endif %}
+{% else %}
+  <details class="new-endpoint">
+    <summary class="button button-primary">＋ New capture endpoint</summary>
+    <form method="post" class="endpoint-form">
+      {% csrf_token %}
+      <label for="endpoint-name">Endpoint name</label>
+      <div class="inline-form">
+        <input id="endpoint-name" name="name" maxlength="120" placeholder="e.g. Home Assistant · production" required value="{{ request.POST.name }}">
+        <button class="button button-primary" type="submit">Create endpoint</button>
+      </div>
+      {% if form_error %}<p class="form-error">{{ form_error }}</p>{% endif %}
+      <p class="muted small">A unique UUID capture URL will be generated. The URL is a secret write capability.</p>
+    </form>
+  </details>
+{% endif %}
+
+<form class="filter-bar" method="get">
+  <label class="search-input"><span aria-hidden="true">⌕</span><input name="q" value="{{ search }}" placeholder="Search request data…"></label>
+  <select name="endpoint" aria-label="Filter by endpoint" {% if current_endpoint %}disabled{% endif %}>
+    <option value="">All endpoints</option>
+    {% for endpoint in endpoints %}<option value="{{ endpoint.pk }}" {% if selected_endpoint == endpoint.pk|stringformat:"s" %}selected{% endif %}>{{ endpoint.name }}</option>{% endfor %}
+  </select>
+  <select name="method" aria-label="Filter by method">
+    <option value="">Any method</option>
+    <option value="GET" {% if method|upper == "GET" %}selected{% endif %}>GET</option>
+    <option value="POST" {% if method|upper == "POST" %}selected{% endif %}>POST</option>
+    <option value="PUT" {% if method|upper == "PUT" %}selected{% endif %}>PUT</option>
+    <option value="PATCH" {% if method|upper == "PATCH" %}selected{% endif %}>PATCH</option>
+    <option value="DELETE" {% if method|upper == "DELETE" %}selected{% endif %}>DELETE</option>
+    <option value="OPTIONS" {% if method|upper == "OPTIONS" %}selected{% endif %}>OPTIONS</option>
+    <option value="HEAD" {% if method|upper == "HEAD" %}selected{% endif %}>HEAD</option>
+  </select>
+  <input name="source_ip" value="{{ source_ip }}" placeholder="Source IP" aria-label="Source IP">
+  <label class="date-filter"><span>From</span><input type="date" name="after" value="{{ after }}" aria-label="Received after"></label>
+  <label class="date-filter"><span>To</span><input type="date" name="before" value="{{ before }}" aria-label="Received before"></label>
+  <button class="button button-muted" type="submit">Filter</button>
+</form>
+
+<div class="results-meta">
+  <span>{{ page_obj.paginator.count }} result{{ page_obj.paginator.count|pluralize }}</span>
+  <span class="muted" data-poll-status>Auto-refreshes every 10 seconds</span>
+</div>
+<form method="post" action="{% url 'review:delivery-bulk' %}" id="bulk-form">
+  {% csrf_token %}
+  <input type="hidden" name="return_to" value="{{ request.get_full_path }}">
+  <div class="table-wrap" id="delivery-results">
+    <table class="delivery-table">
+      <thead><tr>
+        <th class="check-cell"><input type="checkbox" aria-label="Select all deliveries" data-select-all></th>
+        <th>METHOD</th><th>ENDPOINT</th><th>REQUEST</th><th>SOURCE</th><th>RECEIVED</th>
+      </tr></thead>
+      <tbody>
+      {% for delivery in deliveries %}
+        <tr>
+          <td class="check-cell"><input type="checkbox" name="delivery_ids" value="{{ delivery.pk }}" aria-label="Select delivery {{ delivery.pk }}"></td>
+          <td><span class="method method-{{ delivery.method|lower }}">{{ delivery.method }}</span></td>
+          <td><a class="table-endpoint" href="{% url 'review:endpoint-detail' delivery.endpoint.pk %}">{{ delivery.endpoint.name }}</a></td>
+          <td><a class="request-link" href="{% url 'review:delivery-detail' delivery.pk %}">{{ delivery.request_target }}</a><span class="body-preview">{{ delivery.body_text|default:"(empty body)"|truncatechars:90 }}</span></td>
+          <td class="mono muted">{{ delivery.source_ip|default:"—" }}</td>
+          <td><time datetime="{{ delivery.received_at|date:'c' }}">{{ delivery.received_at|date:"M j, Y · H:i:s" }}</time></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" class="empty-row"><span class="empty-icon">↙</span><strong>No deliveries found</strong><span>Send a request to an active capture URL to see it here.</span></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="bulk-actions">
+    <span class="muted small">Selected rows</span>
+    <button class="button button-muted" type="submit" name="action" value="export">Export CSV</button>
+    <button class="button button-danger-outline" type="submit" name="action" value="delete" data-confirm="Permanently delete the selected deliveries?">Delete selected</button>
+  </div>
+</form>
+{% if page_obj.paginator.num_pages > 1 %}
+  <nav class="pagination" aria-label="Pagination">
+    {% if page_obj.has_previous %}<a href="?{% if base_query %}{{ base_query }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">← Newer</a>{% endif %}
+    <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a href="?{% if base_query %}{{ base_query }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Older →</a>{% endif %}
+  </nav>
+{% endif %}
+{% endblock %}
