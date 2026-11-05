@@ -24,12 +24,18 @@
 {% if current_endpoint %}
   <div class="capture-card">
     <div>
-      <span class="eyebrow">YOUR CAPTURE URL</span>
-      <code class="capture-url">{{ capture_url }}</code>
-      <p class="muted small">Treat this URL as a write capability. Anyone who has it can send requests.</p>
+      {% for url in capture_urls %}
+        <span class="eyebrow">{% if forloop.first %}PRIMARY{% else %}ALTERNATE{% endif %} CAPTURE URL</span>
+        <code class="capture-url">{{ url }}</code>
+      {% endfor %}
+      <p class="muted small">Treat these URLs as write capabilities. Anyone who has one can send requests.</p>
     </div>
     {% if current_endpoint.is_active %}
-      <button class="button button-primary copy-button" type="button" data-copy="{{ capture_url }}">Copy URL</button>
+      <div class="capture-actions">
+        {% for url in capture_urls %}
+          <button class="button {% if forloop.first %}button-primary{% else %}button-muted{% endif %} copy-button" type="button" data-copy="{{ url }}">Copy {% if forloop.first %}primary{% else %}alternate{% endif %} URL</button>
+        {% endfor %}
+      </div>
     {% endif %}
   </div>
   {% if not current_endpoint.is_active %}

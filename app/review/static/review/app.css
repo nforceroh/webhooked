@@ -52,6 +52,7 @@ h2 { font-size: 15px; margin: 0; letter-spacing: -.02em; }
 .capture-card, .detail-card, .new-endpoint, .danger-zone { background: var(--surface); border: 1px solid var(--line); border-radius: 9px; }
 .capture-card { padding: 17px 19px; display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 15px; }
 .capture-url { display: block; max-width: 70vw; margin-top: 7px; color: var(--green-dark); font-size: 12px; overflow-wrap: anywhere; }
+.capture-actions { display: flex; flex-direction: column; gap: 8px; }
 .muted { color: var(--muted); }
 .small { font-size: 11px; }
 .capture-card p { margin: 7px 0 0; }

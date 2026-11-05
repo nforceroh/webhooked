@@ -65,7 +65,7 @@ def _delivery_list(request, endpoint=None, form_error=""):
     context = _dashboard_context(
         request,
         current_endpoint=endpoint,
-        capture_url=endpoint.capture_url(request) if endpoint else "",
+        capture_urls=endpoint.capture_urls(request) if endpoint else [],
         page_obj=page_obj,
         deliveries=page_obj.object_list,
         search=search,

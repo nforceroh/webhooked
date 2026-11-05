@@ -29,13 +29,19 @@ class CaptureEndpoint(models.Model):
             self.revoked_at = timezone.now()
             self.save(update_fields=["revoked_at"])
 
-    def capture_url(self, request=None) -> str:
-        path = reverse("capture:receive", kwargs={"token": self.public_token})
-        if settings.CAPTURE_BASE_URL:
-            return f"{settings.CAPTURE_BASE_URL}{path}"
+    def _capture_path(self) -> str:
+        return reverse("capture:receive", kwargs={"token": self.public_token})
+
+    def capture_urls(self, request=None) -> list[str]:
+        path = self._capture_path()
+        if settings.CAPTURE_BASE_URLS:
+            return [f"{base_url}{path}" for base_url in settings.CAPTURE_BASE_URLS]
         if request is not None:
-            return request.build_absolute_uri(path)
-        return f"http://localhost:8000{path}"
+            return [request.build_absolute_uri(path)]
+        return [f"http://localhost:8000{path}"]
+
+    def capture_url(self, request=None) -> str:
+        return self.capture_urls(request)[0]
 
 
 class Delivery(models.Model):

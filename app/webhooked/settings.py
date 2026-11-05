@@ -78,7 +78,7 @@ if MAX_CAPTURE_BODY_BYTES <= 0:
     raise ValueError("MAX_CAPTURE_BODY_BYTES must be greater than zero.")
 DATA_UPLOAD_MAX_MEMORY_SIZE = MAX_CAPTURE_BODY_BYTES
 FILE_UPLOAD_MAX_MEMORY_SIZE = MAX_CAPTURE_BODY_BYTES
-CAPTURE_BASE_URL = os.environ.get("CAPTURE_BASE_URL", "").rstrip("/")
+CAPTURE_BASE_URLS = [value.rstrip("/") for value in env_csv("CAPTURE_BASE_URL")]
 TRUSTED_PROXY_CIDRS = tuple(ipaddress.ip_network(value) for value in env_csv("TRUSTED_PROXY_CIDRS"))
 
 LANGUAGE_CODE = "en-us"

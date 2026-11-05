@@ -35,6 +35,33 @@ class ReviewViewTests(TestCase):
         self.assertEqual(created.status_code, 302)
         self.assertEqual(CaptureEndpoint.objects.count(), 2)
 
+    @override_settings(
+        CAPTURE_BASE_URLS=[
+            "https://webhooked.k3s.nf.lab",
+            "http://webhooked-svc.tools.svc.cluster.local:8000",
+        ]
+    )
+    def test_endpoint_detail_shows_all_configured_capture_urls(self):
+        response = self.client.get(reverse("review:endpoint-detail", args=[self.endpoint.pk]))
+        primary_url = f"https://webhooked.k3s.nf.lab/ingest/{self.endpoint.public_token}"
+        alternate_url = (
+            "http://webhooked-svc.tools.svc.cluster.local:8000"
+            f"/ingest/{self.endpoint.public_token}"
+        )
+
+        self.assertContains(response, "PRIMARY CAPTURE URL")
+        self.assertContains(response, primary_url)
+        self.assertContains(response, f'data-copy="{primary_url}"')
+        self.assertContains(response, "ALTERNATE CAPTURE URL")
+        self.assertContains(response, alternate_url)
+        self.assertContains(response, f'data-copy="{alternate_url}"')
+
+    def test_endpoint_detail_uses_request_url_when_no_base_urls_are_configured(self):
+        response = self.client.get(reverse("review:endpoint-detail", args=[self.endpoint.pk]))
+
+        self.assertContains(response, "PRIMARY CAPTURE URL")
+        self.assertNotContains(response, "ALTERNATE CAPTURE URL")
+
     @override_settings(ALLOWED_HOSTS=["webhooked.k3s.nf.lab"])
     def test_https_post_through_proxy_passes_csrf_check(self):
         client = Client(enforce_csrf_checks=True)
