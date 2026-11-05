@@ -1,9 +1,10 @@
 import csv
 import json
+import re
 from io import StringIO
 
 from capture.models import CaptureEndpoint, Delivery
-from django.test import TestCase, override_settings
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 
@@ -33,6 +34,33 @@ class ReviewViewTests(TestCase):
 
         self.assertEqual(created.status_code, 302)
         self.assertEqual(CaptureEndpoint.objects.count(), 2)
+
+    @override_settings(ALLOWED_HOSTS=["webhooked.k3s.nf.lab"])
+    def test_https_post_through_proxy_passes_csrf_check(self):
+        client = Client(enforce_csrf_checks=True)
+        url = reverse("review:dashboard")
+        proxy_headers = {
+            "HTTP_HOST": "webhooked.k3s.nf.lab",
+            "HTTP_X_FORWARDED_PROTO": "https",
+        }
+        page = client.get(url, **proxy_headers)
+        token = re.search(rb'name="csrfmiddlewaretoken" value="([^"]+)"', page.content)
+        self.assertIsNotNone(token)
+
+        response = client.post(
+            url,
+            {"name": "", "csrfmiddlewaretoken": token.group(1).decode()},
+            **proxy_headers,
+            HTTP_ORIGIN="https://webhooked.k3s.nf.lab",
+            HTTP_REFERER="https://webhooked.k3s.nf.lab/",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(
+            response,
+            "Endpoint name must be 1-120 characters.",
+            status_code=400,
+        )
 
     def test_search_filters_request_data(self):
         response = self.client.get(reverse("review:dashboard"), {"q": "door-open"})

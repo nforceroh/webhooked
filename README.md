@@ -78,7 +78,7 @@ Persist MariaDB separately.
 
 ### Proxy and limits
 
-Set `CAPTURE_BASE_URL` when the app is behind a reverse proxy so generated capture URLs use the external scheme and host. The body limit defaults to 1 MiB and can be changed with `MAX_CAPTURE_BODY_BYTES`. By default, the app records the direct peer IP and ignores forwarded IP headers. Configure `TRUSTED_PROXY_CIDRS` as a comma-separated list only when a known reverse proxy sets `X-Forwarded-For`.
+Set `CAPTURE_BASE_URL` when the app is behind a reverse proxy so generated capture URLs use the external scheme and host. Django trusts `X-Forwarded-Proto` to detect HTTPS, so expose the app only through a trusted proxy that sets or overwrites that header. The body limit defaults to 1 MiB and can be changed with `MAX_CAPTURE_BODY_BYTES`. By default, the app records the direct peer IP and ignores forwarded IP headers. Configure `TRUSTED_PROXY_CIDRS` as a comma-separated list only when a known reverse proxy sets `X-Forwarded-For`.
 
 ## Theme
 
