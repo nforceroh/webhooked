@@ -36,23 +36,15 @@ python app/manage.py migrate
 
 ## Container
 
-Build and run the app image:
+Build the image:
 
 ```sh
 docker build -f docker/Dockerfile -t webhooked .
-docker run --rm -p 8000:8000 \
-  -e DJANGO_SECRET_KEY='replace-with-a-private-random-value' \
-  -e DJANGO_ALLOWED_HOSTS='localhost,webhooked.example.lan' \
-  -e DB_ENGINE=mariadb \
-  -e DB_NAME=webhooked \
-  -e DB_USER=webhooked \
-  -e DB_PASSWORD='change-me' \
-  -e DB_HOST=mariadb \
-  -e CAPTURE_BASE_URL='https://webhooked.example.lan' \
-  webhooked
 ```
 
-### SQLite in a container
+The container applies migrations before starting Gunicorn on port 8000. Health checks are available at `/health/live` and `/health/ready`. Set `DJANGO_SECRET_KEY` to a stable, private value; if it is unset, a random key is generated on every start, which invalidates sessions and CSRF tokens across restarts and replicas.
+
+### SQLite (default)
 
 The image defaults to SQLite at `/data/db.sqlite3` (`SQLITE_PATH`), so no database server is needed. Mount a volume at `/data` to persist it:
 
@@ -65,9 +57,36 @@ docker run --rm -p 8000:8000 -v webhooked-data:/data \
 
 The app runs as UID/GID 10001. In Kubernetes, mount a PersistentVolumeClaim at `/data` and set `securityContext: {runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001}` so the volume is writable. Use a single replica (`strategy: Recreate`) with a `ReadWriteOnce` PVC, and avoid NFS-backed storage because SQLite locking is unreliable there.
 
-The container applies migrations before starting Gunicorn. Persist MariaDB separately; the container itself is stateless. Set `CAPTURE_BASE_URL` when the app is behind a reverse proxy so generated capture URLs use the external scheme and host. Health checks are available at `/health/live` and `/health/ready`.
+### MariaDB
 
-The body limit defaults to 1 MiB and can be changed with `MAX_CAPTURE_BODY_BYTES`. By default, the app records the direct peer IP and ignores forwarded IP headers. Configure `TRUSTED_PROXY_CIDRS` as a comma-separated list only when a known reverse proxy sets `X-Forwarded-For`.
+With MariaDB the container itself is stateless:
+
+```sh
+docker run --rm -p 8000:8000 \
+  -e DJANGO_SECRET_KEY='replace-with-a-private-random-value' \
+  -e DJANGO_ALLOWED_HOSTS='localhost,webhooked.example.lan' \
+  -e DB_ENGINE=mariadb \
+  -e DB_NAME=webhooked \
+  -e DB_USER=webhooked \
+  -e DB_PASSWORD='change-me' \
+  -e DB_HOST=mariadb \
+  -e CAPTURE_BASE_URL='https://webhooked.example.lan' \
+  webhooked
+```
+
+Persist MariaDB separately.
+
+### Proxy and limits
+
+Set `CAPTURE_BASE_URL` when the app is behind a reverse proxy so generated capture URLs use the external scheme and host. The body limit defaults to 1 MiB and can be changed with `MAX_CAPTURE_BODY_BYTES`. By default, the app records the direct peer IP and ignores forwarded IP headers. Configure `TRUSTED_PROXY_CIDRS` as a comma-separated list only when a known reverse proxy sets `X-Forwarded-For`.
+
+## Theme
+
+The UI is dark by default. Use the "Toggle theme" button in the top bar to switch to light; the choice is stored in the browser.
+
+## CI
+
+`.github/workflows/build.yaml` builds `docker/Dockerfile` through the shared `nforceroh/.github` image-build workflow. It installs the `dev` extras and runs `python -m pytest && ruff check .` before publishing. `cleanup.yaml` prunes old images weekly; manual runs default to a dry run.
 
 ## Tests and lint
 
