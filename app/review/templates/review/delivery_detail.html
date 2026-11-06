@@ -30,7 +30,7 @@
   <div class="section-title"><h2>Body</h2><span class="muted small">{{ delivery.body_bytes|length }} bytes</span></div>
   {% if delivery.body_is_utf8 %}
     {% if body_json != None %}<span class="pill pill-json">JSON</span>{% endif %}
-    <pre class="payload">{{ delivery.body_text }}</pre>
+    <pre class="payload">{% if body_pretty %}{{ body_pretty }}{% else %}{{ delivery.body_text }}{% endif %}</pre>
   {% else %}
     <span class="pill pill-binary">Binary · Base64</span>
     <pre class="payload">{{ delivery.body_base64 }}</pre>

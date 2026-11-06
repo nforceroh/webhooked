@@ -1,4 +1,3 @@
-import csv
 import json
 import logging
 from datetime import date
@@ -99,10 +98,14 @@ def endpoint_detail(request, pk):
 
 def delivery_detail(request, pk):
     delivery = get_object_or_404(Delivery.objects.select_related("endpoint"), pk=pk)
+    body_json = delivery.body_json
+    body_pretty = (
+        json.dumps(body_json, ensure_ascii=False, indent=2) if body_json is not None else None
+    )
     return render(
         request,
         "review/delivery_detail.html",
-        _dashboard_context(request, delivery=delivery, body_json=delivery.body_json),
+        _dashboard_context(request, delivery=delivery, body_json=body_json, body_pretty=body_pretty),
     )
 
 
@@ -166,38 +169,7 @@ def delivery_bulk_action(request):
         ):
             return redirect(return_to)
         return redirect("review:dashboard")
-    if action != "export":
-        return HttpResponseBadRequest("Unknown bulk action.")
-
-    response = HttpResponse(content_type="text/csv; charset=utf-8")
-    response["Content-Disposition"] = 'attachment; filename="deliveries.csv"'
-    writer = csv.writer(response)
-    writer.writerow(
-        [
-            "id",
-            "endpoint",
-            "received_at",
-            "method",
-            "request_target",
-            "source_ip",
-            "headers",
-            "body_base64",
-        ]
-    )
-    for delivery in deliveries.select_related("endpoint").order_by("received_at", "pk"):
-        writer.writerow(
-            [
-                delivery.pk,
-                delivery.endpoint.name,
-                delivery.received_at.isoformat(),
-                delivery.method,
-                delivery.request_target,
-                delivery.source_ip or "",
-                json.dumps(delivery.headers, ensure_ascii=False),
-                delivery.body_base64,
-            ]
-        )
-    return response
+    return HttpResponseBadRequest("Unknown bulk action.")
 
 
 @require_POST

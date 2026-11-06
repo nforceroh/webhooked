@@ -1,7 +1,5 @@
-import csv
 import json
 import re
-from io import StringIO
 
 from capture.models import CaptureEndpoint, Delivery
 from django.test import Client, TestCase, override_settings
@@ -108,17 +106,6 @@ class ReviewViewTests(TestCase):
         self.assertEqual(response["Content-Type"], "application/json")
         self.assertEqual(payload["body_text"], '{"event":"door-open"}')
         self.assertEqual(payload["body_json"], {"event": "door-open"})
-
-    def test_csv_export_contains_selected_deliveries(self):
-        response = self.client.post(
-            reverse("review:delivery-bulk"),
-            {"action": "export", "delivery_ids": [str(self.delivery.pk)]},
-        )
-        rows = list(csv.reader(StringIO(response.content.decode("utf-8"))))
-
-        self.assertEqual(response["Content-Type"], "text/csv; charset=utf-8")
-        self.assertEqual(rows[1][0], str(self.delivery.pk))
-        self.assertEqual(rows[1][1], "Home automation")
 
     def test_bulk_delete_removes_selected_deliveries(self):
         response = self.client.post(
